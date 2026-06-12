@@ -405,7 +405,12 @@ a,button,[role="button"],input,textarea,select{transition:color var(--transition
 .portal-reveal.is-visible{opacity:1;transform:none;}
 
 /* ===== PORTAL GATE ===== */
-.portal-gate-wrap{min-height:100dvh;background:var(--color-dark-blue);color:var(--color-on-dark);display:flex;align-items:center;justify-content:center;padding:var(--space-8);position:relative;overflow:hidden;}
+.portal-gate-wrap{
+  min-height:100dvh;color:var(--color-on-dark);
+  display:flex;align-items:center;justify-content:center;
+  padding:var(--space-8);position:relative;overflow:hidden;
+  background:url('assets/backgrounds/bg_dark_hero.png') center/cover no-repeat var(--color-dark-blue);
+}
 .portal-gate-wrap::after{content:'';position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--color-high-lima);}
 .portal-gate-card{width:min(100%,520px);}
 .portal-gate-card .logo-img{width:190px;margin-bottom:var(--space-12);}
@@ -420,6 +425,7 @@ a,button,[role="button"],input,textarea,select{transition:color var(--transition
 .portal-gate-card p{color:#A7B6BA;}
 .portal-gate-wrap .btn-primary{background:var(--color-high-lima);color:var(--color-dark-blue);}
 .portal-gate-wrap .btn-primary:hover{opacity:.85;}
+.icon-inline{display:inline-block;vertical-align:-2px;flex-shrink:0;}
 
 /* ===== THEME TOGGLE ===== */
 .theme-toggle{width:32px;height:32px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;color:var(--color-text-muted);border:1px solid var(--color-border);}
@@ -858,7 +864,7 @@ a,button,[role="button"],input,textarea,select{transition:color var(--transition
       <p>Este panel es de uso exclusivo del equipo de CULTBRAND. Si eres cliente, utiliza el enlace de briefing o de portal que te hemos facilitado.</p>
       <div class="portal-gate-form">
         <input class="portal-gate-input" type="password" id="admin-gate-password" placeholder="Clave del equipo" autocomplete="current-password">
-        <button class="btn btn-primary btn-full" onclick="unlockAdminPanel()">Entrar al panel</button>
+        <button class="btn btn-primary btn-full" onclick="unlockAdminPanel()">Entrar al panel <img class="icon-inline" src="assets/icons/arrow_ink.png" width="16" height="16" alt="" aria-hidden="true"></button>
         <div class="portal-gate-error" id="admin-gate-error"></div>
       </div>
     </div>
@@ -874,7 +880,7 @@ a,button,[role="button"],input,textarea,select{transition:color var(--transition
       <p>Introduce la clave facilitada por CULTBRAND para acceder al estado, alcance, inversión y próximos pasos del proyecto.</p>
       <div class="portal-gate-form">
         <input class="portal-gate-input" type="password" id="portal-gate-password" placeholder="Clave de acceso" autocomplete="current-password">
-        <button class="btn btn-primary btn-full" onclick="unlockClientPortal()">Entrar al portal</button>
+        <button class="btn btn-primary btn-full" onclick="unlockClientPortal()">Entrar al portal <img class="icon-inline" src="assets/icons/arrow_ink.png" width="16" height="16" alt="" aria-hidden="true"></button>
         <div class="portal-gate-error" id="portal-gate-error"></div>
       </div>
     </div>
@@ -1773,7 +1779,7 @@ function loadClient(project, isPreview=false){
     <aside class="brief-rail">
       <div class="brief-rail-inner">
         <section class="brief-stage reveal-soft is-visible" id="brief-stage-card">
-          <span class="brief-stage-label">Punto del proceso</span>
+          <span class="brief-stage-label"><img class="icon-inline" src="assets/icons/compass_ink.png" width="15" height="15" alt="" aria-hidden="true" style="margin-right:6px;"> Punto del proceso</span>
           <h2 class="brief-stage-title" id="brief-stage-title">Empezamos por lo esencial</h2>
           <p class="brief-stage-copy" id="brief-stage-copy">${BRIEF_EXPERIENCE_MESSAGES.start}</p>
           <div class="brief-stage-meta" id="brief-stage-meta">${project.modules.map((key,idx)=>`<span class="brief-chip${idx===0?' active':''}" data-brief-chip="${key}">0${idx+1} · ${escapeHtml(MODULES[key]?.label||key)}</span>`).join('')}</div>
@@ -2790,7 +2796,7 @@ function renderClientPortal(payload){
   ].map(item=>`<article class="portal-faq"><h3>${escapeHtml(item[0])}</h3><p>${escapeHtml(item[1])}</p></article>`).join('');
 
   document.getElementById('portal-contact-card').innerHTML=`
-    <h3>Pablo Esteve · CULTBRAND</h3>
+    <h3><img class="icon-inline" src="assets/icons/chat_ink.png" width="18" height="18" alt="" aria-hidden="true" style="margin-right:8px;vertical-align:-3px;">Pablo Esteve · CULTBRAND</h3>
     <p>Persona de contacto para dudas de alcance, calendario, entregables y revisiones. Para mantener el proyecto ordenado, cualquier cambio relevante debe quedar recogido por escrito antes de pasar a producción.</p>
     <p style="margin-top:var(--space-4);color:var(--color-text);"><strong>pablo@cultbrand.es</strong> · Valencia, España · cultbrand.es</p>
   `;
