@@ -408,13 +408,18 @@ a,button,[role="button"],input,textarea,select{transition:color var(--transition
 .portal-gate-wrap{min-height:100dvh;background:var(--color-dark-blue);color:var(--color-on-dark);display:flex;align-items:center;justify-content:center;padding:var(--space-8);position:relative;overflow:hidden;}
 .portal-gate-wrap::after{content:'';position:absolute;left:0;right:0;bottom:0;height:4px;background:var(--color-high-lima);}
 .portal-gate-card{width:min(100%,520px);}
-.portal-gate-card .logo-img{width:190px;margin-bottom:var(--space-14);}
+.portal-gate-card .logo-img{width:190px;margin-bottom:var(--space-12);}
 .portal-gate-card h1{font-size:var(--text-2xl);line-height:1;margin-bottom:var(--space-5);color:var(--color-on-dark);}
 .portal-gate-card p{color:var(--color-on-dark-muted);font-size:var(--text-base);line-height:1.7;margin-bottom:var(--space-8);}
 .portal-gate-form{display:grid;gap:var(--space-3);}
 .portal-gate-input{width:100%;border:1px solid rgba(232,238,240,.22);background:rgba(232,238,240,.06);color:var(--color-on-dark);border-radius:var(--radius-md);padding:var(--space-4);font-size:var(--text-base);}
 .portal-gate-input:focus{border-color:var(--color-high-lima);outline:none;}
 .portal-gate-error{min-height:20px;color:var(--color-danger);font-size:var(--text-sm);}
+.portal-gate-card .logo-img-light{display:block!important;}
+.portal-gate-card .logo-img-dark{display:none!important;}
+.portal-gate-card p{color:#A7B6BA;}
+.portal-gate-wrap .btn-primary{background:var(--color-high-lima);color:var(--color-dark-blue);}
+.portal-gate-wrap .btn-primary:hover{opacity:.85;}
 
 /* ===== THEME TOGGLE ===== */
 .theme-toggle{width:32px;height:32px;border-radius:var(--radius-full);display:flex;align-items:center;justify-content:center;color:var(--color-text-muted);border:1px solid var(--color-border);}
@@ -844,6 +849,22 @@ a,button,[role="button"],input,textarea,select{transition:color var(--transition
   </main>
 </div>
 
+<!-- ========== ADMIN GATE ========== -->
+<div class="view" id="view-admin-gate">
+  <div class="portal-gate-wrap">
+    <div class="portal-gate-card">
+      <img class="logo-img logo-img-light" src="assets/logos/cultbrand_logo_light.png" alt="CULTBRAND">
+      <h1>Área interna CULTBRAND.</h1>
+      <p>Este panel es de uso exclusivo del equipo de CULTBRAND. Si eres cliente, utiliza el enlace de briefing o de portal que te hemos facilitado.</p>
+      <div class="portal-gate-form">
+        <input class="portal-gate-input" type="password" id="admin-gate-password" placeholder="Clave del equipo" autocomplete="current-password">
+        <button class="btn btn-primary btn-full" onclick="unlockAdminPanel()">Entrar al panel</button>
+        <div class="portal-gate-error" id="admin-gate-error"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ========== CLIENT PORTAL GATE ========== -->
 <div class="view" id="view-portal-gate">
   <div class="portal-gate-wrap">
@@ -1181,6 +1202,45 @@ async function decodeBriefingEnvelope(encoded){
   return decodePayload(value);
 }
 
+// Clave del panel: SHA-256 de la clave de acceso del equipo CULTBRAND.
+// Para cambiarla: en la terminal, ejecuta  printf 'TU-NUEVA-CLAVE' | shasum -a 256  y pega aquí el resultado.
+const ADMIN_KEY_HASH='1b03325fb2b3a8871d643cd460a56cbe7c0813bf8208da48948cb2a1c1481b75';
+let adminUnlockedMem=false;
+
+async function sha256Hex(text){
+  const buffer=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
+  return [...new Uint8Array(buffer)].map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+function isAdminUnlocked(){
+  try{return sessionStorage.getItem('cb_admin_ok')==='1'||adminUnlockedMem;}
+  catch(error){return adminUnlockedMem;}
+}
+
+function requireAdmin(){
+  if(isAdminUnlocked()){showView('view-admin');return;}
+  showView('view-admin-gate');
+  setTimeout(()=>document.getElementById('admin-gate-password')?.focus(),80);
+}
+
+async function unlockAdminPanel(){
+  const input=document.getElementById('admin-gate-password');
+  const error=document.getElementById('admin-gate-error');
+  const value=input?.value.trim()||'';
+  if(!value){if(error)error.textContent='Introduce la clave de acceso.';return;}
+  const hash=await sha256Hex(value);
+  if(hash===ADMIN_KEY_HASH){
+    adminUnlockedMem=true;
+    try{sessionStorage.setItem('cb_admin_ok','1');}catch(error){}
+    if(error)error.textContent='';
+    if(input)input.value='';
+    showView('view-admin');
+    renderTable();
+  }else{
+    if(error)error.textContent='Clave incorrecta.';
+  }
+}
+
 function pushEvent(project,label){
   project.history=project.history||[];
   project.history.unshift({at:new Date().toISOString(),label});
@@ -1507,7 +1567,7 @@ function editProject(pid){
 function duplicateProject(pid){
   const p=projects.find(x=>x.id===pid);if(!p)return;
   const copy=JSON.parse(JSON.stringify(p));
-  copy.id='p_'+Date.now();
+  copy.id=shortId();
   copy.proyecto=(p.proyecto&&p.proyecto!=='Sin nombre'?p.proyecto:'Proyecto')+' (copia)';
   copy.status='sent';copy.briefing=null;copy.proposal=null;
   copy.portalPassword='';copy.portalStatus='proposal_ready';
@@ -1570,7 +1630,7 @@ function createProject(){
     return;
   }
   const p={
-    id:'p_'+Date.now(), ...shared,
+    id:shortId(), ...shared,
     status:'sent', briefing:null, proposal:null, portalStatus:'proposal_ready', portalPassword:'',
     createdAt:new Date().toLocaleDateString('es-ES'), history:[]
   };
@@ -1585,12 +1645,20 @@ function createProject(){
   });
 }
 
+function appBaseUrl(){return window.location.origin+window.location.pathname;}
+const MODULE_CODES={estrategia:'e',identidad:'i',campana:'c',digital:'d',web:'w',contenidos:'n'};
+function modulesToCode(modules){return (modules||[]).map(m=>MODULE_CODES[m]||'').join('');}
+function codeToModules(code){
+  const rev=Object.fromEntries(Object.entries(MODULE_CODES).map(([k,v])=>[v,k]));
+  return [...String(code||'')].map(ch=>rev[ch]).filter(Boolean);
+}
+function shortId(){return 'p'+Math.random().toString(36).slice(2,7);}
+
 async function generateLink(pid){
   const p=projects.find(x=>x.id===pid);
-  if(!p)return window.location.href.split('#')[0];
-  const payload={id:p.id,empresa:p.empresa,contacto:p.contacto,cargo:p.cargo,email:p.email,web:p.web||'',proyecto:p.proyecto,modules:p.modules};
-  const encoded=await encodeBriefingEnvelope(payload);
-  return window.location.href.split('#')[0]+'#b/'+encoded;
+  if(!p)return appBaseUrl();
+  const parts=[p.id,modulesToCode(p.modules),p.contacto||'',p.empresa||''].map(encodeURIComponent);
+  return appBaseUrl()+'#f/'+parts.join('~');
 }
 
 function getFilteredProjects(){
@@ -1674,7 +1742,7 @@ function loadClient(project, isPreview=false){
 
   let mainHtml=`<div class="welcome reveal-up" data-reveal>
     <div class="welcome-tag">Briefing de proyecto</div>
-    <h1>Hola, ${project.contacto.split(' ')[0]}.<br>Gracias por confiar en CultBrand.</h1>
+    <h1>Hola${(project.contacto||'').trim()?`, ${escapeHtml(project.contacto.trim().split(' ')[0])}`:''}.<br>Gracias por confiar en CultBrand.</h1>
     <p class="welcome-body">Este formulario nos ayuda a entenderte bien antes de preparar cualquier propuesta. No hay respuestas correctas o incorrectas — cuanto más detalle nos aportes, más precisa y útil será nuestra propuesta para ti.</p>
     <p class="welcome-body">Te llevará entre <strong>10 y 20 minutos</strong>. Si hay algo que no tienes claro todavía, puedes indicarlo en el campo de comentarios de cada sección.</p>
     <div class="welcome-highlights">
@@ -1979,7 +2047,7 @@ async function setupThankYouShare(project,data){
     briefing:data
   };
   const envelope=await encodeBriefingEnvelope(lastResponsePayload);
-  lastResponseLink=window.location.href.split('#')[0]+'#respuesta/'+envelope;
+  lastResponseLink=appBaseUrl()+'#respuesta/'+envelope;
   const subject=encodeURIComponent(`Briefing · ${project.proyecto||'Proyecto'} · ${project.empresa||''}`);
   const mailBody=encodeURIComponent(`Hola Pablo,\n\nAquí están mis respuestas del briefing:\n\n${lastResponseLink}\n\nUn saludo.`);
   container.innerHTML=`<div class="ty-share">
@@ -2607,7 +2675,7 @@ async function generatePortalLink(pid){
   p.portalStatus=p.portalStatus||'proposal_ready';
   persistProjects();
   const envelope=await encryptPortalPayload(buildPortalPayload(p),p.portalPassword);
-  return window.location.href.split('#')[0]+'#portal-lock/'+envelope;
+  return appBaseUrl()+'#portal-lock/'+envelope;
 }
 
 async function openClientPortal(pid){
@@ -2620,7 +2688,7 @@ async function openClientPortal(pid){
   const envelope=await encryptPortalPayload(payload,p.portalPassword);
   currentPortalGateEnvelope=envelope;
   renderClientPortal(payload);
-  history.pushState('',document.title,window.location.href.split('#')[0]+'#portal-lock/'+envelope);
+  history.pushState('',document.title,appBaseUrl()+'#portal-lock/'+envelope);
 }
 
 function openCurrentClientPortal(){
@@ -3145,7 +3213,7 @@ function escapeHtml(value){
 }
 
 function goBackToAdmin(){
-  showView('view-admin');
+  requireAdmin();
   history.pushState('',document.title,window.location.pathname+window.location.search);
 }
 
@@ -3158,7 +3226,21 @@ function showView(id){
 
 function handleHash(){
   const hash=window.location.hash;
-  if(hash.startsWith('#b/')){
+  if(hash.startsWith('#f/')){
+    const [id,code,contacto,empresa]=hash.slice(3).split('~').map(part=>{
+      try{return decodeURIComponent(part);}catch(e){return part;}
+    });
+    const modules=codeToModules(code);
+    if(!modules.length){requireAdmin();return;}
+    const decoded={id:id||shortId(),contacto:contacto||'',empresa:empresa||'',cargo:'',email:'',telefono:'',proyecto:'',modules};
+    const existing=projects.find(p=>p.id===decoded.id);
+    const project=existing||decoded;
+    if(!existing){
+      projects.unshift({...decoded,status:'sent',briefing:null,proposal:null,createdAt:new Date().toLocaleDateString('es-ES')});
+      persistProjects();
+    }
+    loadClient(project,false);
+  }else if(hash.startsWith('#b/')){
     const encoded=hash.replace('#b/','');
     decodeBriefingEnvelope(encoded).then(decoded=>{
       const existing=projects.find(p=>p.id===decoded.id);
@@ -3170,7 +3252,7 @@ function handleHash(){
       loadClient(project,false);
     }).catch(error=>{
       console.error(error);
-      showView('view-admin');
+      requireAdmin();
     });
   }else if(hash.startsWith('#briefing/')){
     const encoded=hash.replace('#briefing/','');
@@ -3185,11 +3267,11 @@ function handleHash(){
       loadClient(project,false);
     }catch(e){
       const p=projects.find(x=>x.id===encoded);
-      if(p){loadClient(p,false);}else{showView('view-admin');}
+      if(p){loadClient(p,false);}else{requireAdmin();}
     }
   }else if(hash.startsWith('#respuesta/')){
     const encoded=hash.replace('#respuesta/','');
-    showView('view-admin');
+    requireAdmin();
     decodeBriefingEnvelope(encoded).then(payload=>{
       const p=importBriefingResponse(payload);
       history.replaceState('',document.title,window.location.pathname+window.location.search);
@@ -3207,9 +3289,9 @@ function handleHash(){
       renderClientPortal(decodePayload(encoded));
     }catch(e){
       const p=projects.find(x=>x.id===encoded);
-      if(p?.proposal){renderClientPortal(buildPortalPayload(p));}else{showView('view-admin');}
+      if(p?.proposal){renderClientPortal(buildPortalPayload(p));}else{requireAdmin();}
     }
-  }else{showView('view-admin');}
+  }else{requireAdmin();}
 }
 window.addEventListener('hashchange',handleHash);
 
@@ -3238,6 +3320,9 @@ document.addEventListener('DOMContentLoaded',()=>{
   renderTable();
   document.getElementById('portal-gate-password')?.addEventListener('keydown',e=>{
     if(e.key==='Enter')unlockClientPortal();
+  });
+  document.getElementById('admin-gate-password')?.addEventListener('keydown',e=>{
+    if(e.key==='Enter')unlockAdminPanel();
   });
   handleHash();
 });

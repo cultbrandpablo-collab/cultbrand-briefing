@@ -11,6 +11,8 @@ Aplicación web estática (HTML/CSS/JS vanilla) que permite a CultBrand:
 **Pendiente de implementar:** backend real, login y persistencia multiusuario.
 
 **Novedades (junio 2026):**
+- **Panel protegido con clave:** la URL base ya no muestra el panel; aparece una puerta de acceso "Área interna CULTBRAND". Clave actual: `CULTBRAND2026`. Para cambiarla: ejecuta `printf 'TU-NUEVA-CLAVE' | shasum -a 256` y sustituye el valor de `ADMIN_KEY_HASH` en index.html. El cliente nunca ve el panel: sus enlaces (`#f/`, `#portal-lock/`) abren directamente su formulario o su portal.
+- **Enlace de briefing corto:** formato `#f/<id>~<módulos>~<contacto>~<empresa>` (~80-100 caracteres con dominio). Los módulos se codifican una letra por módulo (e=estrategia, i=identidad, c=campaña, d=digital, w=web, n=contenidos). Los enlaces antiguos `#briefing/` y `#b/` siguen funcionando.
 - **Enlace de respuestas (cierra el bucle sin backend):** al enviar el briefing, el cliente recibe un enlace comprimido `#respuesta/…` (deflate + base64url, ~1-2 KB) que puede mandar por email o WhatsApp con un clic. Al abrirlo, el panel importa el briefing automáticamente. También puede descargar una copia `.json`.
 - **Importar respuestas:** botón en el panel para pegar un enlace de respuestas o un `.json` y volcarlo al proyecto correspondiente (crea el proyecto si no existe).
 - **Envío automático opcional:** constante `FORM_ENDPOINT` al inicio del script. Si se configura con un endpoint de Formspree, el briefing también se envía por email al enviarse.
