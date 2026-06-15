@@ -213,8 +213,17 @@ a,button,[role="button"],input,textarea,select{transition:color var(--transition
 .badge-draft{background:var(--color-surface-3);color:var(--color-text-muted);}
 .badge-sent{border:1px solid var(--color-border);color:var(--color-text-muted);}
 .badge-received{background:var(--color-success-bg);color:var(--color-success);}
-.actions-cell{display:flex;gap:var(--space-2);}
+.actions-cell{display:flex;gap:var(--space-2);align-items:center;}
 .table-wrap{overflow-x:auto;}
+.row-menu{position:relative;}
+.row-menu-btn{width:28px;height:28px;border:1px solid var(--color-border);border-radius:var(--radius-md);display:inline-flex;align-items:center;justify-content:center;color:var(--color-text-muted);font-size:1rem;flex-shrink:0;cursor:pointer;background:none;}
+.row-menu-btn:hover{border-color:var(--color-border-hover);color:var(--color-text);}
+.row-dropdown{position:absolute;right:0;top:calc(100% + 4px);z-index:200;background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-md);box-shadow:0 8px 24px rgba(0,0,0,.18);min-width:180px;padding:var(--space-2);display:none;flex-direction:column;gap:1px;}
+.row-menu.open .row-dropdown{display:flex;}
+.row-dropdown button{width:100%;text-align:left;padding:var(--space-2) var(--space-3);border-radius:var(--radius-sm);font-size:var(--text-xs);background:none;border:none;color:var(--color-text);cursor:pointer;white-space:nowrap;}
+.row-dropdown button:hover{background:var(--color-surface-2);}
+.row-dropdown button.danger:hover{color:var(--color-danger);}
+.row-dropdown .menu-sep{height:1px;background:var(--color-sep);margin:var(--space-1) 0;}
 .project-title{display:flex;flex-direction:column;gap:2px;}
 .project-title strong{font-size:var(--text-sm);}
 .project-meta{color:var(--color-text-muted);font-size:var(--text-xs);}
@@ -1626,6 +1635,9 @@ function setTableQuery(value){tableQuery=value;renderTable();}
 function setTableFilter(value){tableStatusFilter=value;renderTable();}
 
 function closeModal(id){document.getElementById(id).classList.remove('open');}
+function toggleRowMenu(pid){const m=document.getElementById('menu-'+pid);const wasOpen=m.classList.contains('open');closeRowMenus();if(!wasOpen)m.classList.add('open');}
+function closeRowMenus(){document.querySelectorAll('.row-menu.open').forEach(m=>m.classList.remove('open'));}
+document.addEventListener('click',e=>{if(!e.target.closest('.row-menu'))closeRowMenus();},{capture:true});
 
 function createProject(){
   const empresa=document.getElementById('f-empresa').value.trim();
@@ -1722,17 +1734,23 @@ function renderTable(){
       <td><div class="project-title"><span style="font-size:var(--text-xs);color:var(--color-text-muted);">${p.createdAt}</span>${deadlineHtml}</div></td>
       <td><select class="status-select${LIVE_STATUSES.includes(p.status)?' is-live':''}" onchange="setProjectStatus('${p.id}',this.value)" aria-label="Estado del proyecto">${PROJECT_STATUSES.map(s=>`<option value="${s.key}" ${s.key===p.status?'selected':''}>${s.label}</option>`).join('')}</select></td>
       <td><div class="actions-cell">
-        <button class="btn btn-ghost btn-sm" onclick="copyProjectLink('${p.id}')">Copiar enlace</button>
-        <button class="btn btn-ghost btn-sm" onclick="previewProject('${p.id}')">Ver briefing</button>
-        ${p.briefing
-          ? `<button class="btn btn-ghost btn-sm" onclick="openResponses('${p.id}')">Ver respuestas</button>
-        <button class="btn btn-ghost btn-sm" onclick="openSummary('${p.id}')">Resumen</button>`
-          : `<button class="btn btn-ghost btn-sm" onclick="openImportForProject('${p.id}')">↓ Importar respuestas</button>`}
-        <button class="btn btn-ghost btn-sm" onclick="openClientPortal('${p.id}')" ${p.proposal?'':'disabled'}>Portal</button>
         <button class="btn btn-primary btn-sm" onclick="${p.proposal?`openProposal('${p.id}')`:`generateProposal('${p.id}')`}">${p.proposal?'Editar propuesta':'Generar propuesta'}</button>
-        <button class="icon-btn-sm" onclick="editProject('${p.id}')" title="Editar ficha" aria-label="Editar ficha">✎</button>
-        <button class="icon-btn-sm" onclick="duplicateProject('${p.id}')" title="Duplicar proyecto" aria-label="Duplicar proyecto">⧉</button>
-        <button class="icon-btn-sm danger" onclick="deleteProject('${p.id}')" title="Eliminar proyecto" aria-label="Eliminar proyecto">×</button>
+        <div class="row-menu" id="menu-${p.id}">
+          <button class="row-menu-btn" onclick="toggleRowMenu('${p.id}')" title="Más acciones">⋮</button>
+          <div class="row-dropdown">
+            ${p.briefing
+              ? `<button onclick="closeRowMenus();openResponses('${p.id}')">Ver respuestas</button>
+            <button onclick="closeRowMenus();openSummary('${p.id}')">Resumen</button>`
+              : `<button onclick="closeRowMenus();openImportForProject('${p.id}')">↓ Importar respuestas</button>`}
+            <button onclick="closeRowMenus();previewProject('${p.id}')">Ver briefing vacío</button>
+            <button onclick="closeRowMenus();copyProjectLink('${p.id}')">Copiar enlace cliente</button>
+            ${p.proposal?`<button onclick="closeRowMenus();openClientPortal('${p.id}')">Portal cliente</button>`:''}
+            <div class="menu-sep"></div>
+            <button onclick="closeRowMenus();editProject('${p.id}')">Editar ficha</button>
+            <button onclick="closeRowMenus();duplicateProject('${p.id}')">Duplicar proyecto</button>
+            <button class="danger" onclick="closeRowMenus();deleteProject('${p.id}')">Eliminar</button>
+          </div>
+        </div>
       </div></td>
     </tr>`;}).join('')}</tbody></table></div>`;
 }
@@ -2562,9 +2580,9 @@ function buildProposalDraft(project){
     reading:buildStrategicReading(project, briefing),
     opportunity:buildOpportunity(project, briefing),
     scopeSummary:buildScopeSummary(modules),
-    approach:'Proponemos trabajar por fases para avanzar con foco: primero entender y decidir, después construir el sistema y finalmente prepararlo para su uso real. La intención no es producir piezas sueltas, sino crear una base de marca que ayude a vender mejor, alinear al equipo y sostener una percepción coherente en cada punto de contacto.',
-    methodology:'El proceso combinará análisis, sesiones de trabajo, desarrollo creativo y validaciones acotadas. Cada fase tendrá entregables concretos, una revisión definida y un criterio de cierre para que el proyecto avance sin ambigüedades ni cambios de alcance no controlados.',
-    timing:hasSprint?'Sprint prioritario de 3 a 5 semanas, condicionado a la disponibilidad de materiales y a validaciones ágiles por parte del cliente.':'Proyecto estimado entre 6 y 10 semanas, según alcance final, disponibilidad de materiales y ritmo de validaciones.',
+    approach:buildApproach(briefing,modules),
+    methodology:buildMethodology(briefing),
+    timing:buildTiming(briefing,hasSprint),
     payment:'50% a la aceptación de la propuesta y 50% a la entrega de los materiales principales.',
     revisions:'Dos rondas de revisión por fase sobre entregables estables. Cambios de alcance se presupuestan aparte.',
     validity:'Propuesta válida durante 15 días naturales desde su emisión.',
@@ -3178,16 +3196,173 @@ function inferObjective(briefing){
   return findAnswer(briefing,'estrategia','objetivo principal')||findAnswer(briefing,'campana','objetivo principal')||findAnswer(briefing,'digital','objetivo en redes sociales')||findAnswer(briefing,'web','objetivo principal')||findAnswer(briefing,'contenidos','tipo de contenido');
 }
 
+function getModuleUrgencySummary(briefing){
+  const lines=[];
+  Object.entries(briefing.modules||{}).forEach(([key,mod])=>{
+    const u=(mod.urgency||'').toLowerCase();
+    if(u&&u!=='sin urgencia'){
+      const label=MODULES[key]?.label||key;
+      lines.push(`${label}: ${mod.urgency}`);
+    }
+  });
+  return lines.join(' · ');
+}
+
 function buildStrategicReading(project, briefing){
-  const issue=findAnswer(briefing,'estrategia','problema o situación')||findAnswer(briefing,'campana','mensaje clave')||findAnswer(briefing,'web','principales problemas detectados')||'El cliente necesita ordenar prioridades, alcance y recursos antes de activar el proyecto.';
-  const audience=findAnswer(briefing,'estrategia','A quién os dirigís')||findAnswer(briefing,'campana','A quién va dirigida')||findAnswer(briefing,'web','mercados donde opera')||'sus públicos prioritarios';
-  return `${project.empresa} llega a este proyecto en un momento en el que la marca necesita ordenar lo que ya existe y convertirlo en una dirección más clara. El reto no es solo mejorar la expresión visual, sino ayudar a que el equipo explique mejor la propuesta, conecte con ${sentenceCase(audience)} y tome decisiones con un criterio común. En el briefing aparece un punto especialmente relevante: ${sentenceCase(issue)}`;
+  const brandState=findAnswer(briefing,'estrategia','tenéis marca actualmente')||findAnswer(briefing,'identidad','existe alguna identidad visual')||'';
+  const brandScope=findAnswer(briefing,'identidad','alcance tiene este encargo')||'';
+  const priorAgency=findAnswer(briefing,'estrategia','trabajado antes con una agencia')||findAnswer(briefing,'identidad','trabajado antes con una agencia')||'';
+  const issue=findAnswer(briefing,'estrategia','problema o situación')||findAnswer(briefing,'campana','mensaje clave')||findAnswer(briefing,'web','principales problemas detectados')||'';
+  const objective=inferObjective(briefing)||'';
+  const sector=findAnswer(briefing,'estrategia','sector operáis')||'';
+  const audience=findAnswer(briefing,'estrategia','A quién os dirigís')||findAnswer(briefing,'campana','A quién va dirigida')||'';
+  const value=findAnswer(briefing,'estrategia','propuesta de valor')||'';
+  const methodology=findAnswer(briefing,'estrategia','metodología de trabajo')||'';
+  const competitors=findAnswer(briefing,'estrategia','competidores')||'';
+  const markets=findAnswer(briefing,'estrategia','mercados operáis')||'';
+  const participants=findAnswer(briefing,'estrategia','personas participarán')||'';
+
+  const parts=[];
+
+  // Situación de marca actual
+  if(brandState&&/sí/i.test(brandState)){
+    const scopeNote=brandScope&&!/sin\s+nombre/i.test(brandScope)?`, con un alcance de ${brandScope.toLowerCase()}`:'';
+    parts.push(`${project.empresa} llega a este proyecto con una marca activa${scopeNote}.`);
+  } else if(brandState&&/no/i.test(brandState)){
+    parts.push(`${project.empresa} afronta este proyecto sin marca previa, lo que permite construir desde cero con criterio.`);
+  } else {
+    parts.push(`${project.empresa} llega a este proyecto en un momento de revisión y decisión sobre su posicionamiento.`);
+  }
+
+  // Reto central
+  if(issue) parts.push(`El reto que han señalado: ${sentenceCase(issue)}.`);
+  if(objective&&objective!==issue) parts.push(`El objetivo declarado: ${sentenceCase(objective)}.`);
+
+  // Sector y target
+  if(sector) parts.push(`Operan en ${sector.toLowerCase().replace(/^b2b\s*/i,'el sector B2B de ').replace(/^b2c\s*/i,'el sector B2C de ')}.`);
+  if(audience) parts.push(`Se dirigen principalmente a ${audience.charAt(0).toLowerCase()+audience.slice(1)}${audience.endsWith('.')?'':'.'}` );
+
+  // Propuesta de valor
+  if(value) parts.push(`Su propuesta de valor: "${sentenceCase(value)}".`);
+
+  // Metodología preferida
+  if(methodology){
+    const meth=Array.isArray(methodology)?methodology.join(' y '):methodology;
+    parts.push(`Prefieren trabajar con ${meth.toLowerCase()}.`);
+  }
+
+  // Mercados
+  if(markets&&markets.toLowerCase()!=='españa') parts.push(`Operan o quieren operar en: ${markets}.`);
+  if(participants) parts.push(`En el proceso participarán ${participants.toLowerCase()}.`);
+
+  // Experiencia previa con agencias
+  if(priorAgency&&priorAgency.toLowerCase().includes('mixtos')){
+    parts.push(`Han trabajado antes con agencias con resultados mixtos: el proceso, la claridad de criterio y la gestión del alcance serán tan importantes como el entregable final.`);
+  } else if(priorAgency&&/nunca|no.*agencia/i.test(priorAgency)){
+    parts.push(`No tienen experiencia previa con agencias de branding, lo que permite partir sin inercias y exige acompañamiento en el proceso.`);
+  }
+
+  // Competidores (si los han dado)
+  if(competitors&&competitors.toLowerCase()!=='ya te lo diré'&&competitors.length>3){
+    parts.push(`Han mencionado como referencias o competidores: ${competitors}.`);
+  }
+
+  return parts.join(' ');
 }
 
 function buildOpportunity(project, briefing){
-  const value=findAnswer(briefing,'estrategia','propuesta de valor')||findAnswer(briefing,'web','qué desea realizar')||'su propuesta diferencial';
-  const budget=findAnswer(briefing,'estrategia','Orientación de presupuesto')||findAnswer(briefing,'campana','Presupuesto')||findAnswer(briefing,'web','inversión prevista')||'un rango a concretar tras definición de alcance';
-  return `La oportunidad está en transformar ${sentenceCase(value)} en una expresión de marca más comprensible, deseable y consistente. Con una inversión orientativa de ${budget.toLowerCase()}, conviene concentrar el trabajo en decisiones que tengan impacto directo en percepción, venta y capacidad de ejecución interna.`;
+  const value=findAnswer(briefing,'estrategia','propuesta de valor')||findAnswer(briefing,'web','qué desea realizar')||'';
+  const budget=findAnswer(briefing,'estrategia','Orientación de presupuesto')||findAnswer(briefing,'campana','Presupuesto')||findAnswer(briefing,'web','inversión prevista')||'';
+  const urgency=getModuleUrgencySummary(briefing);
+  const markets=findAnswer(briefing,'estrategia','mercados operáis')||'';
+  const identityScope=findAnswer(briefing,'identidad','alcance tiene este encargo')||'';
+  const applications=findAnswer(briefing,'identidad','dónde se aplicará')||'';
+
+  const parts=[];
+
+  if(value&&value.length>5){
+    parts.push(`La oportunidad está en hacer que "${sentenceCase(value)}" sea comprensible, deseable y consistente en todos los puntos de contacto.`);
+  } else {
+    parts.push(`La oportunidad está en construir una dirección de marca coherente y aplicable en todos los canales.`);
+  }
+
+  if(identityScope&&/evolución|actualización/i.test(identityScope)){
+    parts.push(`La identidad existente se puede evolucionar —no reconstruir—, lo que concentra el esfuerzo en refinar criterio y consistencia, no en partir de cero.`);
+  }
+
+  if(applications){
+    const appList=Array.isArray(applications)?applications.join(', '):applications;
+    if(appList) parts.push(`Los soportes de aplicación señalados son: ${appList.toLowerCase()}.`);
+  }
+
+  if(markets&&markets.toLowerCase()!=='españa'){
+    parts.push(`La presencia en ${markets} abre un campo de expansión que conviene anticipar en las decisiones de sistema de marca.`);
+  }
+
+  if(urgency) parts.push(`Urgencia declarada — ${urgency}.`);
+
+  if(budget&&budget.toLowerCase()!=='prefiero no indicarlo ahora'){
+    parts.push(`El presupuesto orientativo señalado (${budget.toLowerCase()}) permite dimensionar el alcance con realismo.`);
+  } else if(!budget||budget.toLowerCase().includes('no indicarlo')){
+    parts.push(`El presupuesto queda por concretar; conviene definirlo en la primera reunión tras revisar esta propuesta.`);
+  }
+
+  return parts.join(' ');
+}
+
+function buildApproach(briefing,modules){
+  const hasEstrategia=modules.includes('estrategia');
+  const hasIdentidad=modules.includes('identidad');
+  const hasCampana=modules.includes('campana');
+  const hasDigital=modules.includes('digital');
+  const hasContenidos=modules.includes('contenidos');
+  const identityScope=findAnswer(briefing,'identidad','alcance tiene este encargo')||'';
+  const isEvolution=/evolución|actualización/i.test(identityScope);
+
+  let text='Proponemos trabajar por fases con un foco claro: ';
+  const phases=[];
+  if(hasEstrategia) phases.push('primero entender el contexto y decidir el rumbo estratégico');
+  if(hasIdentidad) phases.push(isEvolution?'después refinar y consolidar el sistema visual existente':'después construir el sistema de identidad');
+  if(hasCampana) phases.push('desarrollar el concepto de campaña y las piezas clave');
+  if(hasDigital) phases.push('activar la presencia digital con criterio de marca');
+  if(hasContenidos) phases.push('producir los activos de contenido necesarios');
+  if(phases.length) text+=phases.join(', ')+'. ';
+  text+='La intención no es producir piezas sueltas, sino construir una base que ayude a vender mejor, alinear al equipo y mantener una percepción coherente en cada punto de contacto.';
+  return text;
+}
+
+function buildMethodology(briefing){
+  const methodology=findAnswer(briefing,'estrategia','metodología de trabajo')||'';
+  const participants=findAnswer(briefing,'estrategia','personas participarán')||'';
+  const hito=findAnswer(briefing,'estrategia','hito de negocio')||'';
+  let text='El proceso combinará análisis, sesiones de trabajo, desarrollo creativo y validaciones acotadas. ';
+  if(methodology){
+    const meth=Array.isArray(methodology)?methodology.join(' y '):methodology;
+    text+=`Trabajaremos con ${meth.toLowerCase()}, tal como han indicado su preferencia. `;
+  }
+  if(participants) text+=`La toma de decisiones estará en manos de ${participants.toLowerCase()}. `;
+  if(hito&&/no/i.test(hito)){
+    text+='El proyecto no está condicionado por fechas externas, lo que permite avanzar con el ritmo adecuado sin presiones artificiales.';
+  } else if(hito&&!/no/i.test(hito)){
+    text+=`Existe un hito de negocio a tener en cuenta: "${hito}".`;
+  } else {
+    text+='Cada fase tendrá entregables concretos, una revisión definida y un criterio de cierre claro.';
+  }
+  return text;
+}
+
+function buildTiming(briefing,hasSprint){
+  const urgencyLines=[];
+  Object.entries(briefing.modules||{}).forEach(([key,mod])=>{
+    const u=(mod.urgency||'').toLowerCase();
+    const label=MODULES[key]?.label||key;
+    if(u&&u!=='sin urgencia') urgencyLines.push(`${label} (${mod.urgency})`);
+  });
+  if(hasSprint) return 'Sprint prioritario de 3 a 5 semanas, condicionado a la disponibilidad inmediata de materiales y a validaciones ágiles por parte del cliente. Se aplica recargo por urgencia.';
+  if(urgencyLines.length){
+    return `Estimación de ${urgencyLines.length>1?'8 a 12':'6 a 10'} semanas, adaptada a la urgencia declarada en ${urgencyLines.join(' y ')}. El calendario de arranque se concretará tras la reunión de kick-off.`;
+  }
+  return 'Proyecto estimado entre 8 y 12 semanas según alcance final, disponibilidad de materiales existentes y ritmo de validaciones acordado.';
 }
 
 function buildScopeSummary(moduleKeys){
