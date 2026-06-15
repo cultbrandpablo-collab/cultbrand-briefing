@@ -1724,10 +1724,12 @@ function renderTable(){
       <td><div class="actions-cell">
         <button class="btn btn-ghost btn-sm" onclick="copyProjectLink('${p.id}')">Copiar enlace</button>
         <button class="btn btn-ghost btn-sm" onclick="previewProject('${p.id}')">Ver briefing</button>
-        <button class="btn btn-ghost btn-sm" onclick="openResponses('${p.id}')" ${p.briefing?'':'disabled'}>Ver respuestas</button>
-        <button class="btn btn-ghost btn-sm" onclick="openSummary('${p.id}')" ${p.briefing?'':'disabled'}>Resumen</button>
+        ${p.briefing
+          ? `<button class="btn btn-ghost btn-sm" onclick="openResponses('${p.id}')">Ver respuestas</button>
+        <button class="btn btn-ghost btn-sm" onclick="openSummary('${p.id}')">Resumen</button>`
+          : `<button class="btn btn-ghost btn-sm" onclick="openImportForProject('${p.id}')">↓ Importar respuestas</button>`}
         <button class="btn btn-ghost btn-sm" onclick="openClientPortal('${p.id}')" ${p.proposal?'':'disabled'}>Portal</button>
-        <button class="btn btn-primary btn-sm" onclick="${p.proposal?`openProposal('${p.id}')`:`generateProposal('${p.id}')`}" ${p.briefing?'':'disabled'}>${p.proposal?'Editar propuesta':'Generar propuesta'}</button>
+        <button class="btn btn-primary btn-sm" onclick="${p.proposal?`openProposal('${p.id}')`:`generateProposal('${p.id}')`}">${p.proposal?'Editar propuesta':'Generar propuesta'}</button>
         <button class="icon-btn-sm" onclick="editProject('${p.id}')" title="Editar ficha" aria-label="Editar ficha">✎</button>
         <button class="icon-btn-sm" onclick="duplicateProject('${p.id}')" title="Duplicar proyecto" aria-label="Duplicar proyecto">⧉</button>
         <button class="icon-btn-sm danger" onclick="deleteProject('${p.id}')" title="Eliminar proyecto" aria-label="Eliminar proyecto">×</button>
@@ -2430,11 +2432,16 @@ function openImportResponse(){
   setTimeout(()=>input?.focus(),80);
 }
 
+function openImportForProject(pid){
+  openImportResponse();
+  document.getElementById('modal-import').__targetPid=pid;
+}
+
 async function confirmImportResponse(){
   const raw=document.getElementById('import-input')?.value.trim()||'';
   const error=document.getElementById('import-error');
   if(error)error.textContent='';
-  if(!raw){if(error)error.textContent='Pega un enlace de respuestas o el contenido del archivo .json.';return;}
+  if(!raw){if(error)error.textContent='Pega el enlace de respuestas que te ha enviado el cliente.';return;}
   try{
     let payload;
     if(raw.includes('#respuesta/')){
@@ -2446,10 +2453,11 @@ async function confirmImportResponse(){
     }
     const p=importBriefingResponse(payload);
     closeModal('modal-import');
-    showToast(`Briefing de ${p.empresa} importado ✓`);
+    document.getElementById('modal-import').__targetPid=null;
+    openResponses(p.id);
   }catch(err){
     console.error(err);
-    if(error)error.textContent='No se ha podido leer el contenido. Revisa que el enlace o el JSON estén completos.';
+    if(error)error.textContent='No se ha podido leer el contenido. Asegúrate de pegar el enlace completo.';
   }
 }
 
