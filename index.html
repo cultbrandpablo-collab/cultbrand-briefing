@@ -2052,14 +2052,20 @@ function collectFormData(){
       const input=block.querySelector('.q-input,.q-textarea');
       const group=block.querySelector('.choice-group');
       let value='';
+      let id='';
+
       if(input){
         value=input.value.trim();
-      }else if(group?.dataset.type==='radio'){
-        value=group.querySelector('.choice-item.checked')?.dataset.value||'';
-      }else if(group?.dataset.type==='check'){
-        value=[...group.querySelectorAll('.choice-item.checked')].map(item=>item.dataset.value);
+        id=input.id?.replace(`q_${key}_`,'')||'unknown';
+      }else if(group){
+        id=group.dataset.qid?.replace(`q_${key}_`,'')||'unknown';
+        if(group.dataset.type==='radio'){
+          value=group.querySelector('.choice-item.checked')?.dataset.value||'';
+        }else if(group.dataset.type==='check'){
+          value=[...group.querySelectorAll('.choice-item.checked')].map(item=>item.dataset.value);
+        }
       }
-      answers.push({label,value});
+      answers.push({id,label,value});
     });
     const urgencyBtn=section.querySelector('.urgency-btn.selected');
     modules[key]={
