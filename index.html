@@ -1223,6 +1223,7 @@ async function decodeBriefingEnvelope(encoded){
 // Para cambiarla: en la terminal, ejecuta  printf 'TU-NUEVA-CLAVE' | shasum -a 256  y pega aquí el resultado.
 const ADMIN_KEY_HASH='1b03325fb2b3a8871d643cd460a56cbe7c0813bf8208da48948cb2a1c1481b75';
 let adminUnlockedMem=false;
+let pendingResponsePayload=null;
 
 async function sha256Hex(text){
   const buffer=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));
@@ -1253,6 +1254,16 @@ async function unlockAdminPanel(){
     if(input)input.value='';
     showView('view-admin');
     renderTable();
+    if(pendingResponsePayload){
+      try{
+        const p=importBriefingResponse(pendingResponsePayload);
+        pendingResponsePayload=null;
+        history.replaceState('',document.title,window.location.pathname+window.location.search);
+        openResponses(p.id);
+      }catch(e){
+        showToast('No se pudieron importar las respuestas');
+      }
+    }
   }else{
     if(error)error.textContent='Clave incorrecta.';
   }
@@ -3424,15 +3435,18 @@ function handleHash(){
     }
   }else if(hash.startsWith('#respuesta/')){
     const encoded=hash.replace('#respuesta/','');
-    requireAdmin();
-    decodeBriefingEnvelope(encoded).then(payload=>{
-      const p=importBriefingResponse(payload);
-      history.replaceState('',document.title,window.location.pathname+window.location.search);
-      showToast(`Briefing de ${p.empresa} recibido ✓`);
-    }).catch(error=>{
-      console.error(error);
-      showToast('No se pudo leer el enlace de respuestas');
-    });
+    if(isAdminUnlocked()){
+      decodeBriefingEnvelope(encoded).then(payload=>{
+        const p=importBriefingResponse(payload);
+        history.replaceState('',document.title,window.location.pathname+window.location.search);
+        openResponses(p.id);
+      }).catch(()=>showToast('No se pudo leer el enlace de respuestas'));
+    }else{
+      decodeBriefingEnvelope(encoded).then(payload=>{
+        pendingResponsePayload=payload;
+      }).catch(()=>showToast('No se pudo leer el enlace de respuestas'));
+      requireAdmin();
+    }
   }else if(hash.startsWith('#portal-lock/')){
     const encoded=hash.replace('#portal-lock/','');
     renderPortalGate(encoded);
