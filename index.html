@@ -1702,6 +1702,7 @@ function renderTable(){
       <td><div class="actions-cell">
         <button class="btn btn-ghost btn-sm" onclick="copyProjectLink('${p.id}')">Copiar enlace</button>
         <button class="btn btn-ghost btn-sm" onclick="previewProject('${p.id}')">Ver briefing</button>
+        <button class="btn btn-ghost btn-sm" onclick="openResponses('${p.id}')" ${p.briefing?'':'disabled'}>Ver respuestas</button>
         <button class="btn btn-ghost btn-sm" onclick="openSummary('${p.id}')" ${p.briefing?'':'disabled'}>Resumen</button>
         <button class="btn btn-ghost btn-sm" onclick="openClientPortal('${p.id}')" ${p.proposal?'':'disabled'}>Portal</button>
         <button class="btn btn-primary btn-sm" onclick="${p.proposal?`openProposal('${p.id}')`:`generateProposal('${p.id}')`}" ${p.briefing?'':'disabled'}>${p.proposal?'Editar propuesta':'Generar propuesta'}</button>
@@ -1736,6 +1737,19 @@ function copyLink(){
 function previewProject(pid){
   const p=projects.find(x=>x.id===pid);if(!p)return;
   loadClient(p,true);
+}
+
+function openResponses(pid){
+  const p=projects.find(x=>x.id===pid);
+  if(!p?.briefing){showToast('No hay respuestas guardadas para este proyecto');return;}
+  currentProjectId=pid;
+  isPreviewMode=true;
+  const body=document.getElementById('client-body');
+  const backBtn=document.getElementById('back-btn');
+  if(backBtn) backBtn.style.display='inline-flex';
+  body.textContent='Cargando respuestas...';
+  showView('view-client');
+  setTimeout(()=>loadClient(p,true),100);
 }
 
 // ============================================================ CLIENT
