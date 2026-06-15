@@ -1844,42 +1844,51 @@ function populateFormFromBriefing(project){
 
   // Llenar respuestas por módulo
   Object.entries(brief.modules||{}).forEach(([modKey,modData])=>{
-    if(!modData.answers)return;
+    if(!modData.answers||!Array.isArray(modData.answers))return;
 
     // Llenar preguntas
     modData.answers.forEach(ans=>{
+      if(!ans.id)return;
       const fieldId=`q_${modKey}_${ans.id}`;
       const field=document.getElementById(fieldId);
       if(!field)return;
 
-      if(field.classList.contains('q-input')||field.classList.contains('q-textarea')){
+      if(field.type==='text'||field.type==='date'||field.type==='email'||field.tagName==='TEXTAREA'){
         field.value=ans.value||'';
-      }else{
-        // Es un choice group
-        const group=field.closest('[data-type]');
-        if(!group)return;
-        const isRadio=group.dataset.type==='radio';
+      }else if(field.classList?.contains('choice-group')){
+        // Es un choice group (radio o check)
         const vals=Array.isArray(ans.value)?ans.value:[ans.value];
-
-        group.querySelectorAll('.choice-item').forEach(item=>{
+        field.querySelectorAll('.choice-item').forEach(item=>{
           const shouldCheck=vals.includes(item.dataset.value);
-          item.setAttribute('aria-checked',shouldCheck);
+          item.setAttribute('aria-checked',String(shouldCheck));
           item.classList.toggle('checked',shouldCheck);
         });
+      }else{
+        // Buscar el choice-group padre
+        const group=field.closest('[data-type]');
+        if(group){
+          const vals=Array.isArray(ans.value)?ans.value:[ans.value];
+          group.querySelectorAll('.choice-item').forEach(item=>{
+            const shouldCheck=vals.includes(item.dataset.value);
+            item.setAttribute('aria-checked',String(shouldCheck));
+            item.classList.toggle('checked',shouldCheck);
+          });
+        }
       }
     });
 
     // Llenar urgencia
     if(modData.urgency){
-      const urgencyBtns=document.querySelectorAll(`button[onclick*="setUrgency"][onclick*="'${modKey}'"]`);
+      const urgencyMap={flexible:0, normal:1, pronto:2, sprint:3};
+      const urgencyBtns=document.querySelectorAll(`.urgency-btn`);
       urgencyBtns.forEach(btn=>{
-        const isTarget=btn.textContent.toLowerCase().includes(
-          modData.urgency==='flexible'?'sin urgencia':
-          modData.urgency==='normal'?'1-3':
-          modData.urgency==='pronto'?'próximas':
-          'sprint'
-        );
-        btn.classList.toggle('active',isTarget);
+        if(!btn.onclick)return;
+        const match=btn.onclick.toString().match(/setUrgency\(.*?'(\w+)'/);
+        if(match&&match[1]===modKey){
+          const targetIdx=urgencyMap[modData.urgency]||0;
+          const btnIdx=Array.from(btn.parentElement.children).indexOf(btn);
+          btn.classList.toggle('active',btnIdx===targetIdx);
+        }
       });
     }
 
